@@ -4,7 +4,8 @@ from htmlnode import LeafNode
 from htmlnode import ParentNode
 import re
 import pdb
-
+import os
+import shutil
 def main():
     pass
 
@@ -250,5 +251,29 @@ def markdown_to_html_node(markdown):
         content.append(node)
     endnode = ParentNode("div", content)
     return endnode
-        
+
+
+def copydirectory(src, dst):
+    if os.path.exists(dst):
+        shutil.rmtree(dst)
+        print(f"Removed existing directory '{dst}'")
+
+    os.makedirs(dst)
+    print(f"Made new directory '{dst}'")
+
+    with os.scandir(src) as entries:
+        for entry in entries:
+            src_path = os.path.join(src, entry.name)
+            dst_path = os.path.join(dst, entry.name)
+
+            if entry.is_dir():
+                print(f"Opening directory '{dst_path}'")
+                copydirectory(src_path, dst_path)
+            else:
+                print(f"Copying file '{src_path}' to '{dst_path}'")
+                shutil.copy2(src_path, dst_path)
+
+
+
+
 main()
