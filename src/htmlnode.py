@@ -54,7 +54,7 @@ class ParentNode(HTMLNode):
             for child in self.children:
                 newchild = child.to_html()
                 newchildren.append(newchild)
-            result = "<" + str(self.tag) + ">" + str(newchildren) + "</" + str(self.tag) + ">"
+            result = "<" + str(self.tag) + ">" + "\n".join(newchildren) + "</" + str(self.tag) + ">"
             return result
     def __eq__(self, other):
         if not isinstance(other, ParentNode):

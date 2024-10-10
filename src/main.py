@@ -7,7 +7,15 @@ import pdb
 import os
 import shutil
 def main():
-    pass
+    
+    source_directory = '/Users/harrymoxon/staticsite/static'
+    destination_directory = '/Users/harrymoxon/staticsite/public'
+    copydirectory(source_directory, destination_directory)
+    from_directory = '/Users/harrymoxon/staticsite/content'
+    dest_directory = '/Users/harrymoxon/staticsite/public/'
+    template_directory = '/Users/harrymoxon/staticsite/template.html'
+    generate_pages_recursive(from_directory, template_directory, dest_directory)
+    
 
 def text_node_to_html_node(text_node):
     if text_node.text_type.lower() == "text":
@@ -19,7 +27,7 @@ def text_node_to_html_node(text_node):
     elif text_node.text_type.lower() == "code":
         return LeafNode(tag = "code", value = text_node.text)
     elif text_node.text_type.lower() == "link":
-        return LeafNode(tag = "a", value = text_node.text, props = {"href": text_node.url})
+        return LeafNode(tag = "a", value = text_node.text, props = "href = " + text_node.url)
     elif text_node.text_type.lower() == "image":
         return LeafNode(tag = "img", value = "", props = [{"src": text_node.url}, {"alt": text_node.text}])
     else:
@@ -214,11 +222,24 @@ def convert_to_node(tag, file):
     elif tag == "ul" or tag == "ol":
         subitems = file.split("\n")
         children = []
+        
         for item in subitems:
             if not item == "":
-                subnode = LeafNode("li", item)
+                content = text_to_textnodes(item)
+                newcontent = []
+                for cont in content:
+                    newitem = text_node_to_html_node(cont)
+                    newcontent.append(newitem)
+                subnode = ParentNode("li", newcontent)
                 children.append(subnode)
         node = ParentNode(tag, children)
+    elif tag =="p":
+        content = text_to_textnodes(file)
+        newcontent = []
+        for item in content:
+            newitem = text_node_to_html_node(item)
+            newcontent.append(newitem)
+        node = ParentNode(tag, newcontent)
     else:
         node = LeafNode(tag, file)
     return node
@@ -274,6 +295,70 @@ def copydirectory(src, dst):
                 shutil.copy2(src_path, dst_path)
 
 
+def extract_title(markdown):
+    heading_pattern = re.compile(r'^#\s+(.*)', re.MULTILINE)
 
+    lines = markdown.split("\n")
+    for line in lines:
+        match = heading_pattern.search(line)  # Use search to find first occurrence
+        if match:
+            heading = match.group(1)  # Group 1 captures the heading text
+            stripped_heading = block_to_plain_text(heading)
+            return stripped_heading
+        
+    raise ValueError("No heading starting with a single '#' was found.")
+
+
+def generate_page(from_path, template_path, dest_path):
+    print(f"Generating page from '{from_path}' to '{dest_path}' using '{template_path}'.")
+    with open(from_path, 'r', encoding="utf-8") as markdown_file:
+        markdown = markdown_file.read()
+    with open(template_path, 'r', encoding="utf-8") as template_file:
+        template = template_file.read()
+    markdown_node = markdown_to_html_node(markdown)
+    markdown_html = markdown_node.to_html()
+    #pdb.set_trace()
+
+    title = extract_title(markdown)
+    page = template.replace('{{ Title }}', title)
+    pageFinal = page.replace('{{ Content }}', markdown_html)
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    with open(dest_path, 'w', encoding="utf-8") as dest_file:
+        dest_file.write(pageFinal)
+
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+    if not os.path.isfile(template_path):
+        raise ValueError(f"The template path is not a valid file: {template_path}")
+
+    pages = []
+    with open(template_path, 'r', encoding="utf-8") as template_file:
+        template = template_file.read()
+
+    for root, dirs, files in os.walk(dir_path_content):
+        for file in files:
+            if file.endswith('.md') or file.endswith('.markdown'):
+                file_path = os.path.join(root, file)
+                with open(file_path, 'r', encoding='utf-8') as markdown_file:
+                    content = markdown_file.read()
+                markdown_node = markdown_to_html_node(content)
+                markdown_html = markdown_node.to_html()
+                title = extract_title(content)
+                page = template.replace('{{ Title }}', title)
+                pageFinal = page.replace('{{ Content }}', markdown_html)
+                pages.append(pageFinal)
+
+
+                relative_path = os.path.relpath(root, dir_path_content)
+                if relative_path == ".":
+                    relative_path = ""
+                else:
+                    relative_path = os.path.join(relative_path)
+
+                dest_file_path = os.path.join(dest_dir_path, relative_path, 'index.html')
+                os.makedirs(os.path.dirname(dest_file_path), exist_ok=True)
+                with open(dest_file_path, 'w', encoding="utf-8") as dest_file:
+                    dest_file.write(pageFinal)
+
+    return pages
 
 main()
